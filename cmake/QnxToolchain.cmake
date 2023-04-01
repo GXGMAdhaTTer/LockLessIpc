@@ -1,0 +1,55 @@
+SET(CMAKE_SYSTEM_NAME Linux)
+SET(QNX_BASE $ENV{QNX_BASE})
+SET(ENV{QNX_ARCH} aarch64le)
+SET(ENV{HOME} ${QNX_BASE}/host/linux/x86_64)
+SET(ENV{QNX_TARGET} ${QNX_BASE}/target/qnx7)
+if(QNX_VERSION STREQUAL "7.0")
+    set(QNX_TOOLCHAIN_VERSION "5.4.0")
+    set(QNX_TOOLCHAIN_TRIPLE "aarch64-unknown-nto-qnx7.0.0")
+elseif(QNX_VERSION STREQUAL "7.1")
+    set(QNX_TOOLCHAIN_VERSION "8.3.0")
+    set(QNX_TOOLCHAIN_TRIPLE "aarch64-unknown-nto-qnx7.1.0")
+endif()
+set(QNX_TOOLCHAIN_PREFIX "${QNX_BASE}/host/linux/x86_64/usr/bin/${QNX_TOOLCHAIN_TRIPLE}-")
+
+execute_process(COMMAND "/usr/bin/ccache" "-h"
+  RESULT_VARIABLE _res
+  OUTPUT_VARIABLE _output
+  ERROR_VARIABLE _err
+)
+# specify the cross compiler
+if( NOT _res EQUAL 0 OR " ${_output}" STREQUAL " " )
+  SET(CMAKE_C_COMPILER ${QNX_TOOLCHAIN_PREFIX}gcc)
+  SET(CMAKE_CXX_COMPILER ${QNX_TOOLCHAIN_PREFIX}g++)
+else()
+  message(STATUS "Compile with ccache: /usr/bin/ccache")
+  SET(CMAKE_C_COMPILER     "/usr/bin/ccache")
+  SET(CMAKE_CXX_COMPILER   "/usr/bin/ccache")
+  SET(CMAKE_C_COMPILER_ARG1 ${QNX_TOOLCHAIN_PREFIX}gcc)
+  SET(CMAKE_CXX_COMPILER_ARG1 ${QNX_TOOLCHAIN_PREFIX}g++)
+endif()
+
+set(CUSTOM_COMPILE_OPTIONS -fPIC -Wall)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    list(APPEND CUSTOM_COMPILE_OPTIONS -O0 -g3 -ggdb -ggdb3 -D_DEBUG_=1 -faligned-new=64)
+else()
+    list(APPEND CUSTOM_COMPILE_OPTIONS -O3 -DNDEBUG -faligned-new=64)
+endif()
+string(REPLACE ";" " " CMAKE_CXX_FLAGS "${CUSTOM_COMPILE_OPTIONS}")
+string(REPLACE ";" " " CMAKE_C_FLAGS "${CUSTOM_COMPILE_OPTIONS}")
+
+# where is the target environment
+SET(QNX_INC1 ${QNX_BASE}/target/qnx7/usr/include/)
+SET(QNX_INC2 ${QNX_BASE}/target/qnx7/usr/include/c++/v1/)
+if(QNX_VERSION STREQUAL "7.0")
+  SET(QNX_INC4 ${QNX_BASE}/target/qnx7/usr/include/c++/${QNX_TOOLCHAIN_VERSION}/arm-unknown-nto-qnx7.0.0eabi/)
+elseif(QNX_VERSION STREQUAL "7.1")
+  SET(QNX_INC4 ${QNX_BASE}/target/qnx7/usr/include/c++/${QNX_TOOLCHAIN_VERSION}/arm-unknown-nto-qnx7.1.0eabi/)
+endif()
+SET(QNX_INC5 ${QNX_BASE}/host/linux/x86_64/usr/lib/gcc/${QNX_TOOLCHAIN_TRIPLE}/${QNX_TOOLCHAIN_VERSION}/include/)
+SET(CMAKE_FIND_ROOT_PATH ${QNX_INC1} ${QNX_INC2} ${QNX_INC3} ${QNX_INC4} ${QNX_INC5})
+# search for programs in the build host directories (not necessary)
+SET(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+# for libraries and headers in the target directories
+SET(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+SET(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
